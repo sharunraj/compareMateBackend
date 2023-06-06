@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify, session
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS, cross_origin
+from flask_session import Session
 from models import db, User
-
+import redis
+import os
 
 
 app = Flask(__name__)
@@ -14,7 +16,16 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flasj.db'
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_ECHO = True
 
+SESSION_TYPE = "redis"
+SESSION_PERMANENT = False
+SESSION_USE_SIGNER = True
+SESSION_REDIS = redis.from_url("redis://127.0.0.1:6379")
+
+
 bcrypt = Bcrypt(app)
+server_session = Session(app)
+
+
 CORS(app, supports_credentials=True)
 db.init_app(app)
 
