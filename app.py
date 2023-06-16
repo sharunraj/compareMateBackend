@@ -1,7 +1,10 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, render_template
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS, cross_origin
 from models import db, User
+from bs4 import BeautifulSoup
+import os
+import requests
 
 
 
@@ -23,7 +26,11 @@ with app.app_context():
 
 @app.route("/")
 def hello_world():
-    return "<p>Hello, World</p>"
+    return "<p>Test page</p>"
+
+@app.route("/searchresults", methods =['GET','POST'])
+def search_products():
+    return "<p>Products</p>"
 
 @app.route("/signup", methods=["POST"])
 def signup():
