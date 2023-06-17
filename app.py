@@ -28,9 +28,38 @@ with app.app_context():
 def hello_world():
     return "<p>Test page</p>"
 
-@app.route("/searchresults", methods =['GET','POST'])
-def search_products():
-    return "<p>Products</p>"
+@app.route("/api/search")
+def search():
+    keyword = request.args.get('keyword')
+    url = f'https://www.amazon.com/s?k={keyword}'
+
+    response = requests.get(url)
+    response.raise_for_status()
+
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    products = []
+
+    results = soup.select('.s-result-item')
+
+    for result in results:
+        title_element = result.select_one('.a-text-normal')
+        price_element = result.select_one('.a-price-whole')
+        image_element = result.select_one('.s-image')
+
+        if title_element and price_element and image_element:
+            title = title_element.get_text(strip=True)
+            price = price_element.get_text(strip=True)
+            image_url = image_element.get('src')
+
+            products.append({
+                'title': title,
+                'price': price,
+                'image_url': image_url
+            })
+
+    return jsonify(products)
+
 
 @app.route("/signup", methods=["POST"])
 def signup():
