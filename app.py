@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session, render_template
+from flask import Flask, request, jsonify, session, render_template, make_response
 from flask_bcrypt import Bcrypt
 from flask_cors import CORS, cross_origin
 from models import db, User
@@ -9,6 +9,7 @@ import requests
 
 
 app = Flask(__name__)
+CORS(app)
 bcrypt = Bcrypt(app)
 
 app.config['SECRET_KEY'] = 'srn-raj'
@@ -28,37 +29,49 @@ with app.app_context():
 def hello_world():
     return "<p>Test page</p>"
 
-@app.route("/api/search")
-def search():
-    keyword = request.args.get('keyword')
-    url = f'https://www.amazon.com/s?k={keyword}'
+@app.route('/search',methods=['POST'])
+def search_products():
+    try:
+        # Retrieve the keyword from the request body
+        keyword = request.json['keyword']
 
-    response = requests.get(url)
-    response.raise_for_status()
+        # Perform the search operation and retrieve the HTML content
+        url = f'https://www.amazon.in/s?k={keyword}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers)
+        content = response.content
 
-    soup = BeautifulSoup(response.content, 'html.parser')
+        # Parse the HTML content using BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
 
-    products = []
+        # Extract the relevant information from the parsed HTML
+        products = []
+        results = soup.find_all('div', {'data-component-type': 's-search-result'})
+        for result in results:
+            title_elem = result.find('span', {'class': 'a-size-medium'})
+            price_elem = result.find('span', {'class': 'a-price-whole'})
+            image_elem = result.find('img', {'class': 's-image'})
 
-    results = soup.select('.s-result-item')
+            if title_elem and price_elem and image_elem:
+                product = {
+                    'title': title_elem.text.strip(),
+                    'price': price_elem.text.strip(),
+                    'image_url': image_elem.get('src'),
+                }
+                products.append(product)
 
-    for result in results:
-        title_element = result.select_one('.a-text-normal')
-        price_element = result.select_one('.a-price-whole')
-        image_element = result.select_one('.s-image')
+        # Return the results as a JSON response
+        return jsonify(products)
 
-        if title_element and price_element and image_element:
-            title = title_element.get_text(strip=True)
-            price = price_element.get_text(strip=True)
-            image_url = image_element.get('src')
+    except Exception as e:
+        # Log the error message
+        print('Error:', str(e))
 
-            products.append({
-                'title': title,
-                'price': price,
-                'image_url': image_url
-            })
+        # Return an error response
+        return jsonify({'error': 'An error occurred during the search.'}), 500
 
-    return jsonify(products)
 
 
 @app.route("/signup", methods=["POST"])
