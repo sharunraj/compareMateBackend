@@ -118,6 +118,29 @@ def login_user():
        "id": user.id,
        "email": user.email
    })
+   
+@app.route('/logout', methods=['POST'])
+def logout():
+    # Clear the user ID from the session to log the user out
+    session.pop('user_id', None)
+    return jsonify({'message': 'Logout successful'})
+
+@app.route('/user', methods=['GET'])
+def get_user_info():
+    user_id = session.get('user_id')
+
+    if user_id:
+        user = User.query.get(user_id)
+
+        if user:
+            return jsonify({
+                'id': user.id,
+                'email': user.email
+            })
+
+    return jsonify({'message': 'User not found'}), 404
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
