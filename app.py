@@ -28,49 +28,81 @@ with app.app_context():
 @app.route("/")
 def hello_world():
     return "<p>Test page</p>"
-
-@app.route('/search',methods=['POST'])
-def search_products():
-    try:
-        # Retrieve the keyword from the request body
-        keyword = request.json['keyword']
-
-        # Perform the search operation and retrieve the HTML content
-        url = f'https://www.amazon.in/s?k={keyword}'
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers)
-        content = response.content
-
-        # Parse the HTML content using BeautifulSoup
-        soup = BeautifulSoup(content, 'html.parser')
-
-        # Extract the relevant information from the parsed HTML
+def scrape_amazon(keyword):
+    url = f'https://www.amazon.in/s?k={keyword.replace}'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
         products = []
+        
         results = soup.find_all('div', {'data-component-type': 's-search-result'})
+        
         for result in results:
             title_elem = result.find('span', {'class': 'a-size-medium'})
             price_elem = result.find('span', {'class': 'a-price-whole'})
             image_elem = result.find('img', {'class': 's-image'})
+            product = {
+                'title': title_elem,
+                'price': price_elem,
+                'image_url': image_elem,
+            }
+            products.append(product)
 
-            if title_elem and price_elem and image_elem:
-                product = {
-                    'title': title_elem.text.strip(),
-                    'price': price_elem.text.strip(),
-                    'image_url': image_elem.get('src'),
-                }
-                products.append(product)
+        return products
+    
+    return None
 
-        # Return the results as a JSON response
-        return jsonify(products)
 
-    except Exception as e:
-        # Log the error message
-        print('Error:', str(e))
+#def scrape_flipkart(keyword):
+    url = f'https://www.flipkart.com/search?q={keyword.replace(" ", "+")}'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        products = []
+        
+        results = soup.find_all('div', {'class': '_1YokD2 _3Mn1Gg'})
 
-        # Return an error response
-        return jsonify({'error': 'An error occurred during the search.'}), 500
+        for result in results:
+            title = result.find('a', {'class': '_4rR01T'}).text.strip()
+            price = result.find('div', {'class': '_30jeq3 _1_WHN1'}).text.strip()
+            image_url = result.find('img', {'class': '_396cs4'}).get('src')
+
+            product = {
+                'title': title,
+                'price': price,
+                'image_url': image_url
+            }
+            products.append(product)
+
+        return products
+    
+    return None
+
+
+@app.route('/search', methods=['POST'])
+def search():
+    keyword = request.json['keyword']
+
+    amazon_products = scrape_amazon(keyword)
+    #flipkart_products = scrape_flipkart(keyword)
+
+    if amazon_products is not None: #and flipkart_products is not None:
+        return jsonify({
+            'amazon': amazon_products,
+            #'flipkart': flipkart_products
+        })
+    else:
+        return jsonify({'error': 'Error fetching search results'}), 500
+
+
+
+
 
 
 
