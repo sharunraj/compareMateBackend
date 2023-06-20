@@ -29,12 +29,8 @@ with app.app_context():
 def hello_world():
     return "<p>Test page</p>"
 
-@app.route('/search',methods=['POST'])
-def search_products():
-    try:
-        # Retrieve the keyword from the request body
+def scrape_amazon():
         keyword = request.json['keyword']
-
         # Perform the search operation and retrieve the HTML content
         url = f'https://www.amazon.in/s?k={keyword}'
         headers = {
@@ -68,13 +64,61 @@ def search_products():
 
         # Return the results as a JSON response
         return jsonify(products)
+    
+    
+def scrape_reliance():
+        # Retrieve the keyword from the request body
+        keyword = request.json['keyword']
 
-    except Exception as e:
-        # Log the error message
-        print('Error:', str(e))
+        # Perform the search operation and retrieve the HTML content
+        url = f'https://www.reliancedigital.in/search?q={keyword}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers)
+        content = response.content
 
-        # Return an error response
-        return jsonify({'error': 'An error occurred during the search.'}), 500
+        # Parse the HTML content using BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
+
+        # Extract the relevant information from the parsed HTML
+        products = []
+        results = soup.find_all('div', {'data-component-type': 's-search-result'})
+        for result in results:
+            title_elem = result.find('div', {'class': 'product-title'}).text.strip()
+            price_elem = result.find('div', {'class': 'product-price'}).text.strip()
+            image_elem = result.find('img', {'class': 'product-img'})['src']
+            product_elem = result.find('a')['href']
+            rating_elem = result.find('div', {'class': 'rating-value'}).text.strip()
+            
+            if title_elem and price_elem and image_elem:
+                product = {
+                    'title': title_elem.text.strip(),
+                    'price': price_elem.text.strip(),
+                    'image_url': image_elem.get('src'),
+                    'product_url':product_elem,
+                    'rating':rating_elem.text.strip(),
+                }
+                products.append(product)
+
+        # Return the results as a JSON response
+        return jsonify(products)
+    
+    
+    
+@app.route('/search',methods=['POST'])
+def search_products():
+    keyword = request.json.get('keyword')
+    
+    amazon_results = scrape_amazon(keyword)
+    reliance_results = scrape_reliance(keyword)
+    
+    results = {
+        'amazon': amazon_results,
+        'reliance': reliance_results
+    }
+    
+    return jsonify(results)
 
 
 
