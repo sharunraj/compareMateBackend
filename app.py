@@ -29,89 +29,64 @@ with app.app_context():
 def hello_world():
     return "<p>Test page</p>"
 
-def scrape_amazon():
-        keyword = request.json['keyword']
-        # Perform the search operation and retrieve the HTML content
-        url = f'https://www.amazon.in/s?k={keyword}'
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36'
+def scrape_amazon(keyword):
+    url = f'https://www.amazon.in/s?k={keyword}'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    products = []
+    results = soup.find_all('div', {'data-component-type': 's-search-result'})
+
+    for result in results:
+        title = result.find('span', class_='a-text-normal').text.strip()
+        price = result.find('span', class_='a-offscreen').text.strip()
+        image_url = result.find('img')['src']
+        product_url = result.find('a', class_='a-link-normal')['href']
+        rating = result.find('span', {'class': 'a-icon-alt'}).text.strip()
+
+        product = {
+            'title': title,
+            'price': price,
+            'image_url': image_url,
+            'product_url': product_url,
+            'rating': rating
         }
-        response = requests.get(url, headers=headers)
-        content = response.content
+        products.append(product)
 
-        # Parse the HTML content using BeautifulSoup
-        soup = BeautifulSoup(content, 'html.parser')
+    return products
 
-        # Extract the relevant information from the parsed HTML
-        products = []
-        results = soup.find_all('div', {'data-component-type': 's-search-result'})
-        for result in results:
-            title_elem = result.find('span', {'class': 'a-size-medium'})
-            price_elem = result.find('span', {'class': 'a-price-whole'})
-            image_elem = result.find('img', {'class': 's-image'})
-            product_elem = 'https://www.amazon.in' + result.find('a', class_='a-link-normal')['href']
-            rating_elem = result.find('span', {'class': 'a-icon-alt'})
-            
-            if title_elem and price_elem and image_elem:
-                product = {
-                    'title': title_elem.text.strip(),
-                    'price': price_elem.text.strip(),
-                    'image_url': image_elem.get('src'),
-                    'product_url':product_elem,
-                    'rating':rating_elem.text.strip(),
-                }
-                products.append(product)
+def scrape_reliance_digital(keyword):
+    url = f'https://www.reliancedigital.in/search?q={keyword}'
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
 
-        # Return the results as a JSON response
-        return jsonify(products)
-    
-    
-def scrape_reliance():
-        # Retrieve the keyword from the request body
-        keyword = request.json['keyword']
+    products = []
+    results = soup.find_all('div', {'class': 'product-card'})
 
-        # Perform the search operation and retrieve the HTML content
-        url = f'https://www.reliancedigital.in/search?q={keyword}'
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36'
+    for result in results:
+        title = result.find('div', {'class': 'product-title'}).text.strip()
+        price = result.find('div', {'class': 'product-price'}).text.strip()
+        image_url = result.find('img', {'class': 'product-img'})['src']
+        product_url = result.find('a')['href']
+        rating = result.find('div', {'class': 'rating-value'}).text.strip()
+
+        product = {
+            'title': title,
+            'price': price,
+            'image_url': image_url,
+            'product_url': product_url,
+            'rating': rating
         }
-        response = requests.get(url, headers=headers)
-        content = response.content
+        products.append(product)
 
-        # Parse the HTML content using BeautifulSoup
-        soup = BeautifulSoup(content, 'html.parser')
+    return products
 
-        # Extract the relevant information from the parsed HTML
-        products = []
-        results = soup.find_all('div', {'data-component-type': 's-search-result'})
-        for result in results:
-            title_elem = result.find('div', {'class': 'product-title'}).text.strip()
-            price_elem = result.find('div', {'class': 'product-price'}).text.strip()
-            image_elem = result.find('img', {'class': 'product-img'})['src']
-            product_elem = result.find('a')['href']
-            rating_elem = result.find('div', {'class': 'rating-value'}).text.strip()
-            
-            if title_elem and price_elem and image_elem:
-                product = {
-                    'title': title_elem.text.strip(),
-                    'price': price_elem.text.strip(),
-                    'image_url': image_elem.get('src'),
-                    'product_url':product_elem,
-                    'rating':rating_elem.text.strip(),
-                }
-                products.append(product)
-
-        # Return the results as a JSON response
-        return jsonify(products)
-    
-    
-    
-@app.route('/search',methods=['POST'])
+@app.route('/search', methods=['POST'])
 def search_products():
     keyword = request.json.get('keyword')
     
     amazon_results = scrape_amazon(keyword)
-    reliance_results = scrape_reliance(keyword)
+    reliance_results = scrape_reliance_digital(keyword)
     
     results = {
         'amazon': amazon_results,
@@ -119,8 +94,6 @@ def search_products():
     }
     
     return jsonify(results)
-
-
 
 @app.route("/signup", methods=["POST"])
 def signup():
