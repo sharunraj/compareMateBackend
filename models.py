@@ -1,13 +1,18 @@
-from flask_sqlalchemy import SQLAlchemy
-from uuid import uuid4
-
-db = SQLAlchemy()
-
-def get_uuid():
-    return uuid4().hex
+from app import db
 
 class User(db.Model):
-    __tablename__ = "users"
-    id = db.Column(db.String(6), primary_key = True, unique = True, default=get_uuid)
-    email = db.Column(db.String(150), unique = True)
-    password = db.Column(db.Text, nullable = False)
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(100), nullable=False)
+    wishlist_items = db.relationship('WishlistedProduct', backref='user', lazy=True)
+
+class WishlistedProduct(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    product_name = db.Column(db.String(100), nullable=False)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'product_name': self.product_name

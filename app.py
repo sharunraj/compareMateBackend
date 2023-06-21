@@ -1,29 +1,14 @@
-from flask import Flask, request, jsonify, session, render_template, make_response
-from flask_bcrypt import Bcrypt
-from flask_cors import CORS, cross_origin
-from models import db, User
-from bs4 import BeautifulSoup
-import os
+from flask import Flask, request, jsonify, session
+from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
 import requests
-
-
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
+app.secret_key = 'your-secret-key'  # Set your own secret key for session management
 CORS(app)
-bcrypt = Bcrypt(app)
-
-app.config['SECRET_KEY'] = 'srn-raj'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///flasj.db'
-
-SQLALCHEMY_TRACK_MODIFICATIONS = False
-SQLALCHEMY_ECHO = True
-
-bcrypt = Bcrypt(app)
-CORS(app, supports_credentials=True)
-db.init_app(app)
-
-with app.app_context():
-    db.create_all()
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+db = SQLAlchemy(app)
 
 @app.route("/")
 def hello_world():
@@ -76,53 +61,65 @@ def search_products():
         # Return an error response
         return jsonify({'error': 'An error occurred during the search.'}), 500
 
-
-
-@app.route("/signup", methods=["POST"])
+# User registration (signup) route
+@app.route('/signup', methods=['POST'])
 def signup():
+    from models import User
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({'message': 'Username already exists'}), 400
+
+    new_user = User(username=username, password=password)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({'message': 'User created successfully'})
+
+# User login route
+@app.route('/login', methods=['POST'])
+def login():
+    from models import User
+    data = request.get_json()
+    username = data['username']
+    password = data['password']
+
+    user = User.query.filter_by(username=username).first()
+
+    if user and user.password == password:
+        session['user_id'] = user.id
+        return jsonify({'message': 'Login successful'})
+    else:
+        return jsonify({'message': 'Invalid credentials'}), 401
     
-   email = request.json["email"]
-   password = request.json["password"]
-   
-   user_exists = User.query.filter_by(email=email).first() is not None
-   
-   if user_exists:
-       return jsonify({"Error": "Email alreay Exists "}), 409
-   
-   
-   hashed_password = bcrypt.generate_password_hash(password)
-   new_user = User(email=email, password=hashed_password)
-   db.session.add(new_user)
-   db.session.commit()
-   
-   session["user_id"] = new_user.id
-   
-   return jsonify({
-        
-        "id": new_user.id,
-        "email": new_user.email
-    })
+@app.route('/wishlist', methods=['POST'])
+def wishlist():
+    from models import User, WishlistedProduct
+    if 'user_id' not in session:
+        return jsonify({'message': 'User not logged in'}), 401
+
+    data = request.get_json()
+    product_name = data['product_name']
+
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+
+    new_wishlist_item = WishlistedProduct(user_id=user.id, product_name=product_name)
+    db.session.add(new_wishlist_item)
+    db.session.commit()
+
+    return jsonify({'message': 'Product added to wishlist'})
+
+# Logout route
+@app.route('/logout', methods=['POST'])
+def logout():
+    session.pop('user_id', None)
+    return jsonify({'message': 'Logout successful'})
     
-@app.route("/login", methods = ["POST"])
-def login_user():
-   email = request.json["email"]
-   password = request.json["password"]
-   
-   user = User.query.filter_by(email=email).first() 
-   
-   if user is None:
-       return jsonify({"Error": "Unauthorized Access"}), 401
-   
-   if not bcrypt.check_password_hash(user.password, password):
-       return jsonify({"Error": "Unaithorized"}), 401
-   
-   session["user_id"] = user.id
-   
-   return jsonify({
-       "id": user.id,
-       "email": user.email
-   })
 if __name__ == "__main__":
-    app.run(debug=True)
+    db.create_all()
+    app.run()
 
 
