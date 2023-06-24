@@ -53,12 +53,16 @@ def search_products():
             title_elem = result.find('span', {'class': 'a-size-medium'})
             price_elem = result.find('span', {'class': 'a-price-whole'})
             image_elem = result.find('img', {'class': 's-image'})
-
+            product_elem = 'https://www.amazon.in' + result.find('a', class_='a-link-normal')['href']
+            rating_elem = result.find('span', {'class': 'a-icon-alt'})
+            
             if title_elem and price_elem and image_elem:
                 product = {
                     'title': title_elem.text.strip(),
                     'price': price_elem.text.strip(),
                     'image_url': image_elem.get('src'),
+                    'product_url':product_elem,
+                    'rating':rating_elem.text.strip(),
                 }
                 products.append(product)
 
