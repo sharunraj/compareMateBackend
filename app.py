@@ -36,7 +36,7 @@ def search_products():
         keyword = request.json['keyword']
 
         # Perform the search operation and retrieve the HTML content
-        url = f'https://www.amazon.in/s?k={keyword}'
+        url = f'https://pricee.com/?q=={keyword}'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36'
         }
@@ -48,21 +48,19 @@ def search_products():
 
         # Extract the relevant information from the parsed HTML
         products = []
-        results = soup.find_all('div', {'data-component-type': 's-search-result'})
+        results = soup.find_all('div', class_='wtb-search-list fl')
         for result in results:
-            title_elem = result.find('span', {'class': 'a-size-medium'})
-            price_elem = result.find('span', {'class': 'a-price-whole'})
-            image_elem = result.find('img', {'class': 's-image'})
-            product_elem = 'https://www.amazon.in' + result.find('a', class_='a-link-normal')['href']
-            rating_elem = result.find('span', {'class': 'a-icon-alt'})
-            
-            if title_elem and price_elem and image_elem:
+            title_elem = result.find('span', class_='ng-binding')
+            price_elem = result.find('div', class_='pd-price ng-binding ng-scope')
+            link_elem = result.find('span', class_='ng-binding')
+            image_elem = result.find('img', class_='')
+
+            if title_elem and price_elem and link_elem and image_elem:
                 product = {
                     'title': title_elem.text.strip(),
                     'price': price_elem.text.strip(),
-                    'image_url': image_elem.get('src'),
-                    'product_url':product_elem,
-                    'rating':rating_elem.text.strip(),
+                    'link': f'https://www.pricee.com{link_elem["href"]}',
+                    'image': image_elem['src'],
                 }
                 products.append(product)
 
