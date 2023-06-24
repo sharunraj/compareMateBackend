@@ -36,7 +36,7 @@ def search_products():
         keyword = request.json['keyword']
 
         # Perform the search operation and retrieve the HTML content
-        url = f'https://www.amazon.in/s?k={keyword}'
+        url = f'https://www.amazon.in/s?k={keyword.replace(" ","+")}'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.93 Safari/537.36'
         }
