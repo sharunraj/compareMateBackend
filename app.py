@@ -48,22 +48,22 @@ def search_products():
 
         # Extract the relevant information from the parsed HTML
         products = []
-        results = soup.find_all('div', class_='wtb-search-list fl')
+        results = soup.find_all('div', class_='card-body')
         for result in results:
-            title_elem = result.find('span', class_='ng-binding')
-            price_elem = result.find('div', class_='pd-price ng-binding ng-scope')
-            link_elem = result.find('span', class_='ng-binding')
-            image_elem = result.find('img', class_='')
+            title_elem = result.find('a', class_='product-name')
+            price_elem = result.find('div', class_='price')
+            link_elem = result.find('a', class_='product-name')
+            image_elem = result.find('img', class_='product-image')
 
-            if title_elem and price_elem and link_elem and image_elem:
+            if title_elem and price_elem and link_elem and image_elem :
                 product = {
                     'title': title_elem.text.strip(),
                     'price': price_elem.text.strip(),
-                    'link': f'https://www.pricee.com{link_elem["href"]}',
-                    'image': image_elem['src'],
+                    'product_url': f'https://www.pricee.com{link_elem["href"]}',
+                    'image_url': image_elem['src'],
+
                 }
                 products.append(product)
-
         # Return the results as a JSON response
         return jsonify(products)
 
